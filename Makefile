@@ -1,15 +1,8 @@
 workdir = $(shell pwd)
 
-bin:
+bin/circleci:
 	mkdir -p bin
-
-bin/circleci: bin
 	curl -fLSs https://circle.ci/cli | DESTDIR=${workdir}/bin bash
 
-cli-setup: bin/circleci
-	[bin/circleci -f ${HOME}/.circleci/cli.yml ] || bin/circleci setup
-
-validate: cli-setup
-	find . -name '*.yml' -exec bin/circleci orb validate {} \;
-
-
+validate: bin/circleci
+	find . -maxdepth 1 -name '*.yml' -exec bin/circleci orb validate {} \;
