@@ -1,0 +1,18 @@
+version: 2.1
+
+jobs:
+  validate:
+    docker:
+      - image: circleci/circleci-cli:latest
+    resource_class: small
+    steps:
+      - checkout
+      - run:
+          name: Validate orbs
+          command: |
+            find . -maxdepth 1 -name '*.yml' -exec circleci orb validate {} \;
+
+workflows:
+  ci:
+    jobs:
+      - validate
