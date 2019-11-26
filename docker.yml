@@ -74,32 +74,6 @@ commands:
           command: |
             $(aws ecr get-login --no-include-email --region <<parameters.region>>)
 
-  tag:
-    description: Tag image
-    parameters:
-      registry:
-        default: docker.io
-        description: Name of registry to use, defaults to docker.io
-        type: string
-      image:
-        description: Name of image to tag
-        type: string
-      source-tag:
-        default: ${CIRCLE_SHA1}
-        description: Source tag
-        type: string
-      target-tag:
-        default: ${CIRCLE_TAG}
-        description: Target tag
-        type: string
-    steps:
-      - run:
-          name: Tag image
-          command: |
-            docker tag \
-              <<parameters.registry>>/<<parameters.image>>:<<parameters.source-tag>> \
-              <<parameters.registry>>/<<parameters.image>>:<<parameters.target-tag>>
-
   version-check:
     description: Check if version is stable
     parameters:
@@ -111,7 +85,7 @@ commands:
         description: Version pattern to check
         type: string
       halt:
-        default: true
+        default: false
         description: Halt job when version is unstable
         type: boolean
       result-variable:
@@ -142,21 +116,74 @@ commands:
                   circleci-agent step halt
                 fi
 
+  tag:
+    description: Tag image
+    parameters:
+      source-registry:
+        default: docker.io
+        description: Name of source registry to use
+        type: string
+      target-registry:
+        default: docker.io
+        description: Name of target registry to use
+        type: string
+      source-image:
+        default: image
+        description: Source image name
+        type: string
+      target-image:
+        description: Target image name
+        type: string
+      source-tag:
+        default: ${CIRCLE_SHA1}
+        description: Source image tag
+        type: string
+      target-tag:
+        default: ${CIRCLE_TAG}
+        description: Image tag
+        type: string
+    steps:
+      - run:
+          name: Tag image
+          command: |
+            docker tag \
+              <<parameters.source-registry>>/<<parameters.source-image>>:<<parameters.source-tag>> \
+              <<parameters.target-registry>>/<<parameters.target-image>>:<<parameters.target-tag>>
+
   push:
     description: Publish image conditionally
     parameters:
+      source-registry:
+        default: docker.io
+        description: Name of source registry to use
+        type: string
       registry:
         default: docker.io
-        description: name of registry to use, defaults to docker.io
+        description: Name of registry to use
+        type: string
+      source-image:
+        default: image
+        description: Image name
         type: string
       image:
         description: Image name
+        type: string
+      source-tag:
+        default: ${CIRCLE_SHA1}
+        description: Source image tag
         type: string
       tag:
         default: ${CIRCLE_TAG}
         description: Image tag
         type: string
     steps:
+      - tag:
+          source-registry: <<parameters.source-registry>>
+          target-registry: <<parameters.registry>>
+          source-image: <<parameters.source-image>>
+          target-image: <<parameters.image>>
+          source-tag: <<parameters.source-tag>>
+          target-tag: <<parameters.tag>>
       - run:
           name: Publish
           command: |
@@ -165,12 +192,24 @@ commands:
   conditional-push:
     description: Publish image conditionally
     parameters:
+      source-registry:
+        default: docker.io
+        description: Name of source registry
+        type: string
       registry:
         default: docker.io
         description: name of registry to use, defaults to docker.io
         type: string
+      source-image:
+        default: image
+        description: Source image name
+        type: string
       image:
         description: Image name
+        type: string
+      source-tag:
+        default: ${CIRCLE_SHA1}
+        description: Source image tag
         type: string
       tag:
         default: ${CIRCLE_TAG}
@@ -184,6 +223,13 @@ commands:
         description: Name of environment variable containing result of condition step(s)
         type: string
     steps:
+      - tag:
+          source-registry: <<parameters.source-registry>>
+          target-registry: <<parameters.registry>>
+          source-image: <<parameters.source-image>>
+          target-image: <<parameters.image>>
+          source-tag: <<parameters.source-tag>>
+          target-tag: <<parameters.tag>>
       - steps: <<parameters.condition-steps>>
       - run:
           name: Publish
@@ -198,10 +244,11 @@ jobs:
     parameters:
       registry:
         default: docker.io
-        description: name of registry to use, defaults to docker.io
+        description: Name of registry
         type: string
       image:
-        description: name of image to tag
+        default: image
+        description: Image name
         type: string
       tag:
         default: ${CIRCLE_SHA1}
@@ -220,7 +267,7 @@ jobs:
         default: Dockerfile
         type: string
       executor:
-        default: docker/machine
+        default: machine
         description: Executor to use
         type: executor
     steps:
@@ -241,7 +288,8 @@ jobs:
         description: name of registry to use, defaults to docker.io
         type: string
       image:
-        description: name of image to tag
+        default: dummy
+        description: Image name to publish
         type: string
       tag:
         default: ${CIRCLE_TAG}
@@ -275,11 +323,65 @@ jobs:
         default: []
         description: Optional steps to run after checkout
         type: steps
-      tag-steps:
-        default: []
-        description: Override tag steps
+      login:
+        default:
+          - login
+        description: Login steps
         type: steps
-      push-steps:
+      executor:
+        default: machine
+        description: Executor to use
+        type: executor
+    steps:
+      - checkout
+      - steps: <<parameters.after-checkout>>
+      - steps: <<parameters.login>>
+      - circleci-docker/build:
+          image: image
+          extra_build_args: <<parameters.extra-build-args>>
+          path: <<parameters.build-context-path>>
+          dockerfile: <<parameters.dockerfile>>
+      - push:
+          registry: <<parameters.registry>>
+          image: <<parameters.image>>
+          tag: <<parameters.tag>>
+      - when:
+          condition: <<parameters.latest>>
+          name: Push latest tag
+          steps:
+            - conditional-push:
+                registry: <<parameters.registry>>
+                image: <<parameters.image>>
+                tag: <<parameters.latest-tag>>
+                condition-steps:
+                  - version-check:
+                      version: ${CIRCLE_TAG}
+                      stable-version-pattern: <<parameters.stable-version-pattern>>
+
+  custom-publish:
+    executor: <<parameters.executor>>
+    parameters:
+      image:
+        default: dummy
+        description: Image name to publish
+        type: string
+      extra-build-args:
+        default: ''
+        description: Extra flags to pass to docker build
+        type: string
+      build-context-path:
+        default: .
+        description: Path to the directory containing your Dockerfile and build context
+        type: string
+      dockerfile:
+        default: Dockerfile
+        description: 'Name of dockerfile to use, defaults to Dockerfile'
+        type: string
+      after-checkout:
+        default: []
+        description: Optional steps to run after checkout
+        type: steps
+      push:
         default: []
         description: Override push steps
         type: steps
@@ -288,72 +390,16 @@ jobs:
         description: Custom login steps
         type: steps
       executor:
-        default: docker/machine
+        default: machine
         description: Executor to use
         type: executor
     steps:
       - checkout
-      - when:
-          condition: <<parameters.after-checkout>>
-          name: Steps to run after checkout
-          steps: <<parameters.after-checkout>>
-      - when:
-          condition: <<parameters.login>>
-          name: Run custom login
-          steps: <<parameters.login>>
-      - unless:
-          condition: <<parameters.login>>
-          name: Login to DockerHub
-          steps:
-            - login
+      - steps: <<parameters.after-checkout>>
+      - steps: <<parameters.login>>
       - circleci-docker/build:
-          registry: <<parameters.registry>>
-          image: <<parameters.image>>
+          image: image
           extra_build_args: <<parameters.extra-build-args>>
           path: <<parameters.build-context-path>>
           dockerfile: <<parameters.dockerfile>>
-      - when:
-          condition: <<parameters.tag-steps>>
-          name: Tag steps
-          steps: <<parameters.tag-steps>>
-      - unless:
-          condition: <<parameters.tag-steps>>
-          name: Tag images
-          steps:
-            - tag:
-                registry: <<parameters.registry>>
-                image: <<parameters.image>>
-                target-tag: <<parameters.tag>>
-            - when:
-                condition: <<parameters.latest>>
-                name: Tag latest
-                steps:
-                  - tag:
-                      registry: <<parameters.registry>>
-                      image: <<parameters.image>>
-                      target-tag: <<parameters.tag>>
-      - when:
-          condition: <<parameters.push-steps>>
-          name: Push steps
-          steps: <<parameters.push-steps>>
-      - unless:
-          condition: <<parameters.push-steps>>
-          name: Push images
-          steps:
-            - push:
-                registry: <<parameters.registry>>
-                image: <<parameters.image>>
-                tag: <<parameters.tag>>
-            - when:
-                condition: <<parameters.latest>>
-                name: Push latest tag
-                steps:
-                  - conditional-push:
-                      registry: <<parameters.registry>>
-                      image: <<parameters.image>>
-                      tag: <<parameters.latest-tag>>
-                      condition-steps:
-                        - version-check:
-                            halt: false
-                            version: ${CIRCLE_TAG}
-                            stable-version-pattern: <<parameters.stable-version-pattern>>
+      - steps: <<parameters.push>>
