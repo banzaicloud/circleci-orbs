@@ -7,33 +7,105 @@ orbs:
   aws: circleci/aws-cli@0.1.17
   circleci-docker: circleci/docker@0.5.18
 
-#examples:
-#  release:
-#    description: Release a helm chart to chartmuseum
-#    usage:
-#      version: 2.1
-#
-#      orbs:
-#        helm: banzaicloud/helm@v0.0.4
-#
-#      workflows:
-#        helm-chart-lint:
-#          jobs:
-#            - helm/lint-chart:
-#                charts-dir: charts
-#                filters:
-#                  tags:
-#                    ignore: /.*/
-#        helm-chart-release:
-#          jobs:
-#            - helm/publish-chart:
-#                context: helm
-#                charts-dir: charts
-#                filters:
-#                  branches:
-#                    ignore: /.*/
-#                  tags:
-#                    only: /chart\/logging-operator\/\d+.\d+.\d+/
+examples:
+  build-only:
+    description: Build docker image
+    usage:
+      version: 2.1
+
+      orbs:
+        docker: banzaicloud/docker@0.0.1
+
+      workflows:
+        docker:
+          jobs:
+            - docker/build:
+                name: Build docker image
+                image: banzaicloud/test-image
+                tag: ${CIRCLE_BRANCH//\//_}
+
+  publish-tagged-and-latest-with-extra-build-args:
+    description: Build docker image with extra build args and publish to DockerHub
+    usage:
+      version: 2.1
+
+      orbs:
+        docker: banzaicloud/docker@0.0.1
+
+      workflows:
+        docker:
+          jobs:
+            - docker/publish:
+                name: Publish test-image
+                context: dockerhub
+                image: banzaicloud/test-image
+                tag: ${CIRCLE_TAG}
+                latest: true
+                extra-build-args: "--build-arg MAX_OLD_SPACE_SIZE=6144"
+
+  publish-tagged-and-latest-tag-to-ecr:
+    description: Build docker image and publish to ECR
+    usage:
+      version: 2.1
+
+      orbs:
+        docker: banzaicloud/docker@0.0.1
+
+      workflows:
+        docker:
+          jobs:
+            - docker/publish:
+                name: Publish test-image to ECR
+                context: dockerhub
+                login:
+                  - docker/ecr-login:
+                      region: us-west-1
+                registry: 123456789012.dkr.ecr.us-west-1.amazonaws.com
+                image: test-image
+                tag: ${CIRCLE_TAG}
+                latest: true
+
+  publish-to-multiple-registries:
+    description: Build docker image and publish to multiple registries with latest tag
+    usage:
+      version: 2.1
+
+      orbs:
+        docker: banzaicloud/docker@0.0.1
+
+      workflows:
+        docker:
+          jobs:
+            - docker/custom-publish:
+                name: Publish tagged & latest image to multiple registries
+                context: dockerhub
+                login:
+                  - docker/login
+                  - docker/ecr-login:
+                      region: us-west-1
+                push:
+                  - docker/push:
+                      registry: docker.io
+                      image: banzaicloud/test-image
+                      tag: ${CIRCLE_TAG}
+                  - docker/push:
+                      registry: 123456789012.dkr.ecr.us-west-1.amazonaws.com
+                      image: test-image
+                      tag: ${CIRCLE_TAG}
+                  - docker/conditional-push:
+                      registry: docker.io
+                      image: banzaicloud/test-image
+                      tag: latest
+                      condition-steps:
+                        - docker/version-check:
+                            version: ${CIRCLE_TAG}
+                  - docker/conditional-push:
+                      registry: 123456789012.dkr.ecr.us-west-1.amazonaws.com
+                      image: test-image
+                      tag: latest
+                      condition-steps:
+                        - docker/version-check:
+                            version: ${CIRCLE_TAG}
 
 executors:
   machine:
