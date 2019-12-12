@@ -188,6 +188,52 @@ commands:
                   circleci-agent step halt
                 fi
 
+  build:
+    description: Build docker image
+    parameters:
+      dockerfile:
+        default: Dockerfile
+        description: Name of dockerfile to use
+        type: string
+      extra-build-args:
+        default: ''
+        description: Extra flags to pass to docker build
+        type: string
+      image:
+        description: Name of image to build
+        type: string
+      build-context-path:
+        default: .
+        description: Path to the directory containing Dockerfile and build context
+        type: string
+      registry:
+        default: docker.io
+        description: Registry name
+        type: string
+      step-name:
+        default: Docker build
+        description: Custom step name for this command
+        type: string
+      tag:
+        default: ${CIRCLE_SHA1}
+        description: Image tag
+        type: string
+      no-output-timeout:
+        default: 10m
+        description: >
+          Elapsed time the command can run without output.
+          The string is a decimal with unit suffix, such as “20m”, “1.25h”, “5s”
+        type: string
+    steps:
+      - run:
+          name: <<parameters.step-name>>
+          no_output_timeout: <<parameters.no-output-timeout>>
+          command: |
+            docker build <<#parameters.extra-build-args>><<parameters.extra-build-args>><</parameters.extra-build-args>> \
+              -f <<parameters.build-context-path>>/<<parameters.dockerfile>> \
+              -t <<parameters.registry>>/<<parameters.image>>:<<parameters.tag>> \
+              <<parameters.build-context-path>>
+
   tag:
     description: Tag image
     parameters:
@@ -342,15 +388,22 @@ jobs:
         default: machine
         description: Executor to use
         type: executor
+      no-output-timeout:
+        default: 10m
+        description: >
+          Elapsed time the command can run without output.
+          The string is a decimal with unit suffix, such as “20m”, “1.25h”, “5s”
+        type: string
     steps:
       - checkout
-      - circleci-docker/build:
+      - build:
           registry: <<parameters.registry>>
           image: <<parameters.image>>
           tag: <<parameters.tag>>
-          extra_build_args: <<parameters.extra-build-args>>
-          path: <<parameters.build-context-path>>
+          extra-build-args: <<parameters.extra-build-args>>
+          build-context-path: <<parameters.build-context-path>>
           dockerfile: <<parameters.dockerfile>>
+          no-output-timeout: <<parameters.no-output-timeout>>
 
   publish:
     executor: <<parameters.executor>>
@@ -404,15 +457,22 @@ jobs:
         default: machine
         description: Executor to use
         type: executor
+      no-output-timeout:
+        default: 10m
+        description: >
+          Elapsed time the command can run without output.
+          The string is a decimal with unit suffix, such as “20m”, “1.25h”, “5s”
+        type: string
     steps:
       - checkout
       - steps: <<parameters.after-checkout>>
       - steps: <<parameters.login>>
-      - circleci-docker/build:
+      - build:
           image: image
-          extra_build_args: <<parameters.extra-build-args>>
-          path: <<parameters.build-context-path>>
+          extra-build-args: <<parameters.extra-build-args>>
+          build-context-path: <<parameters.build-context-path>>
           dockerfile: <<parameters.dockerfile>>
+          no-output-timeout: <<parameters.no-output-timeout>>
       - push:
           registry: <<parameters.registry>>
           image: <<parameters.image>>
@@ -465,13 +525,20 @@ jobs:
         default: machine
         description: Executor to use
         type: executor
+      no-output-timeout:
+        default: 10m
+        description: >
+          Elapsed time the command can run without output.
+          The string is a decimal with unit suffix, such as “20m”, “1.25h”, “5s”
+        type: string
     steps:
       - checkout
       - steps: <<parameters.after-checkout>>
       - steps: <<parameters.login>>
-      - circleci-docker/build:
+      - build:
           image: image
-          extra_build_args: <<parameters.extra-build-args>>
-          path: <<parameters.build-context-path>>
+          extra-build-args: <<parameters.extra-build-args>>
+          build-context-path: <<parameters.build-context-path>>
           dockerfile: <<parameters.dockerfile>>
+          no-output-timeout: <<parameters.no-output-timeout>>
       - steps: <<parameters.push>>
