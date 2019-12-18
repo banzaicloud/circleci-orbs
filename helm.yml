@@ -10,7 +10,7 @@ examples:
       version: 2.1
 
       orbs:
-        helm: banzaicloud/helm@v0.0.4
+        helm: banzaicloud/helm@0.0.6
 
       workflows:
         helm-chart-lint:
@@ -55,7 +55,7 @@ examples:
 executors:
   helm:
     docker:
-      - image: banzaicloud/helm:0.0.4
+      - image: banzaicloud/helm:0.0.5
 
 commands:
   lint:
