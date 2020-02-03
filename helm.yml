@@ -55,7 +55,7 @@ examples:
 executors:
   helm:
     docker:
-      - image: banzaicloud/helm:0.0.5
+      - image: banzaicloud/helm:0.0.6
 
 commands:
   lint:
