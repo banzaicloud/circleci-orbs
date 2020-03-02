@@ -10,7 +10,7 @@ examples:
       version: 2.1
 
       orbs:
-        helm: banzaicloud/helm@0.0.6
+        helm: banzaicloud/helm@0.0.7
 
       workflows:
         helm-chart-lint:
@@ -36,7 +36,7 @@ examples:
       version: 2.1
 
       orbs:
-        helm: banzaicloud/helm@0.0.4
+        helm: banzaicloud/helm@0.0.7
 
       workflows:
         helm-chart-release:
@@ -53,9 +53,12 @@ examples:
                     only: /chart\/logging-operator\/\d+.\d+.\d+/
 
 executors:
-  helm:
+  helm2:
     docker:
-      - image: banzaicloud/helm:0.0.6
+      - image: banzaicloud/helm:0.0.5
+  helm3:
+    docker:
+      - image: banzaicloud/helm:0.0.7
 
 commands:
   lint:
@@ -202,7 +205,7 @@ commands:
 
 jobs:
   publish-chart:
-    executor: helm
+    executor: <<parameters.executor>>
     resource_class: small
     parameters:
       charts-dir:
@@ -224,6 +227,10 @@ jobs:
       skip-dependency-update:
         type: boolean
         default: false
+      executor:
+        default: helm3
+        description: Executor to use
+        type: executor
     steps:
       - checkout
       - setup-repositories:
@@ -245,7 +252,7 @@ jobs:
           tgz-dir: <<parameters.tgz-dir >>
 
   lint-chart:
-    executor: helm
+    executor: <<parameters.executor>>
     resource_class: small
     parameters:
       charts-dir:
@@ -263,6 +270,10 @@ jobs:
       skip-dependency-update:
         type: boolean
         default: false
+      executor:
+        default: helm3
+        description: Executor to use
+        type: executor
     steps:
       - checkout
       - setup-repositories:
