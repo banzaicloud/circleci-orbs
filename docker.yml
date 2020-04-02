@@ -4,8 +4,8 @@ description: |
   Docker image releaser orb based on circleci/docker
 
 orbs:
-  aws: circleci/aws-cli@0.1.17
-  circleci-docker: circleci/docker@0.5.18
+  aws: circleci/aws-cli@1.0.0
+  circleci-docker: circleci/docker@1.0.1
 
 examples:
   build-only:
@@ -14,7 +14,7 @@ examples:
       version: 2.1
 
       orbs:
-        docker: banzaicloud/docker@0.0.1
+        docker: banzaicloud/docker@0.0.3
 
       workflows:
         docker:
@@ -30,7 +30,7 @@ examples:
       version: 2.1
 
       orbs:
-        docker: banzaicloud/docker@0.0.1
+        docker: banzaicloud/docker@0.0.3
 
       workflows:
         docker:
@@ -49,7 +49,7 @@ examples:
       version: 2.1
 
       orbs:
-        docker: banzaicloud/docker@0.0.1
+        docker: banzaicloud/docker@0.0.3
 
       workflows:
         docker:
@@ -60,6 +60,7 @@ examples:
                 login:
                   - docker/ecr-login:
                       region: us-west-1
+                      registry: 123456789012.dkr.ecr.us-west-1.amazonaws.com
                 registry: 123456789012.dkr.ecr.us-west-1.amazonaws.com
                 image: test-image
                 tag: ${CIRCLE_TAG}
@@ -71,7 +72,7 @@ examples:
       version: 2.1
 
       orbs:
-        docker: banzaicloud/docker@0.0.1
+        docker: banzaicloud/docker@0.0.3
 
       workflows:
         docker:
@@ -82,6 +83,7 @@ examples:
                 login:
                   - docker/login
                   - docker/ecr-login:
+                      registry: 123456789012.dkr.ecr.us-west-1.amazonaws.com
                       region: us-west-1
                 push:
                   - docker/push:
@@ -125,8 +127,8 @@ commands:
   setup-aws-cli:
     description: Setup aws-cli
     steps:
-      - aws/install
-      - aws/setup
+      - aws/setup:
+          skip-install-check: true
 
   login:
     description: Docker login
@@ -140,11 +142,15 @@ commands:
         description: AWS region
         default: ${AWS_DEFAULT_REGION}
         type: string
+      registry:
+        description: Registry
+        type: string
     steps:
       - run:
           name: ECR login
           command: |
-            $(aws ecr get-login --no-include-email --region <<parameters.region>>)
+            aws ecr get-login-password --region "<<parameters.region>>" \
+              | docker login --username 'AWS' --password-stdin "<<parameters.registry>>"
 
   version-check:
     description: Check if version is stable
