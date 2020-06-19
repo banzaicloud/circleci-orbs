@@ -271,6 +271,7 @@ commands:
           no_output_timeout: <<parameters.no-output-timeout>>
           command: |
             docker build <<#parameters.extra-build-args>><<parameters.extra-build-args>><</parameters.extra-build-args>> \
+              --pull \
               -f <<parameters.build-context-path>>/<<parameters.dockerfile>> \
               -t <<parameters.registry>>/<<parameters.image>>:<<parameters.tag>> \
               <<parameters.build-context-path>>
