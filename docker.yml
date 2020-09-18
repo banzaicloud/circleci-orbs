@@ -169,6 +169,24 @@ commands:
     steps:
       - circleci-docker/check
 
+  ghcr-login:
+    description: Login to Github Container Registry
+    parameters:
+      user:
+        description: Name of github user environment variable
+        default: GITHUB_USER
+        type: env_var_name
+      token:
+        description: Name of github token environment variable
+        default: GITHUB_TOKEN
+        type: env_var_name
+    steps:
+      - run:
+          name: Login to GHCR
+          command: |
+            echo "${<< parameters.token >>}" \
+              | docker login ghcr.io -u "${<< parameters.user >>}" --password-stdin
+
   ecr-login:
     description: Login to Amazon ECR
     parameters:
