@@ -212,7 +212,7 @@ commands:
         description: Version to check
         type: string
       stable-version-pattern:
-        default: '^[0-9]+\.[0-9]+\.[0-9]+$'
+        default: '^v?[0-9]+\.[0-9]+\.[0-9]+$'
         description: Version pattern to check
         type: string
       halt:
