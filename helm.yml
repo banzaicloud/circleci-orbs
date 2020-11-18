@@ -45,7 +45,7 @@ examples:
                 context: helm
                 charts-dir: charts
                 add-extra-repositories:
-                  - run: helm repo add extra https://kubernetes-charts-incubator.storage.googleapis.com/
+                  - run: helm repo add extra 	https://charts.helm.sh/incubator
                 filters:
                   branches:
                     ignore: /.*/
@@ -99,7 +99,7 @@ commands:
       - run:
           name: Setup helm repositories
           command: |
-            helm repo add incubator http://storage.googleapis.com/kubernetes-charts-incubator
+            helm repo add incubator https://charts.helm.sh/incubator
             helm repo add chartmuseum << parameters.chartmuseum-url >>
       - steps: << parameters.add-extra-repositories >>
       - run:
