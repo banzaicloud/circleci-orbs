@@ -416,6 +416,54 @@ commands:
                 docker push <<parameters.registry>>/<<parameters.image>>:<<parameters.tag>>
               fi
 
+  job-custom-publish-command:
+    parameters: &job-custom-publish-command-params
+      image:
+        default: dummy
+        description: Image name to publish
+        type: string
+      extra-build-args:
+        default: ''
+        description: Extra flags to pass to docker build
+        type: string
+      build-context-path:
+        default: .
+        description: Path to the directory containing your Dockerfile and build context
+        type: string
+      dockerfile:
+        default: Dockerfile
+        description: 'Name of dockerfile to use, defaults to Dockerfile'
+        type: string
+      after-checkout:
+        default: [ ]
+        description: Optional steps to run after checkout
+        type: steps
+      push:
+        default: [ ]
+        description: Override push steps
+        type: steps
+      login:
+        default: [ ]
+        description: Custom login steps
+        type: steps
+      no-output-timeout:
+        default: 10m
+        description: >
+          Elapsed time the command can run without output.
+          The string is a decimal with unit suffix, such as “20m”, “1.25h”, “5s”
+        type: string
+    steps:
+      - checkout
+      - steps: <<parameters.after-checkout>>
+      - steps: <<parameters.login>>
+      - build:
+          image: image
+          extra-build-args: <<parameters.extra-build-args>>
+          build-context-path: <<parameters.build-context-path>>
+          dockerfile: <<parameters.dockerfile>>
+          no-output-timeout: <<parameters.no-output-timeout>>
+      - steps: <<parameters.push>>
+
 jobs:
   build:
     executor: <<parameters.executor>>
@@ -553,52 +601,18 @@ jobs:
   custom-publish:
     executor: <<parameters.executor>>
     parameters:
-      image:
-        default: dummy
-        description: Image name to publish
-        type: string
-      extra-build-args:
-        default: ''
-        description: Extra flags to pass to docker build
-        type: string
-      build-context-path:
-        default: .
-        description: Path to the directory containing your Dockerfile and build context
-        type: string
-      dockerfile:
-        default: Dockerfile
-        description: 'Name of dockerfile to use, defaults to Dockerfile'
-        type: string
-      after-checkout:
-        default: []
-        description: Optional steps to run after checkout
-        type: steps
-      push:
-        default: []
-        description: Override push steps
-        type: steps
-      login:
-        default: []
-        description: Custom login steps
-        type: steps
+      <<: *job-custom-publish-command-params
       executor:
         default: machine
         description: Executor to use
         type: executor
-      no-output-timeout:
-        default: 10m
-        description: >
-          Elapsed time the command can run without output.
-          The string is a decimal with unit suffix, such as “20m”, “1.25h”, “5s”
-        type: string
     steps:
-      - checkout
-      - steps: <<parameters.after-checkout>>
-      - steps: <<parameters.login>>
-      - build:
-          image: image
+      - job-custom-publish-command:
+          image: <<parameters.image>>
           extra-build-args: <<parameters.extra-build-args>>
           build-context-path: <<parameters.build-context-path>>
           dockerfile: <<parameters.dockerfile>>
+          after-checkout: <<parameters.after-checkout>>
+          push: <<parameters.push>>
+          login: <<parameters.login>>
           no-output-timeout: <<parameters.no-output-timeout>>
-      - steps: <<parameters.push>>
