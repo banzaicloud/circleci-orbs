@@ -4,7 +4,7 @@ description: |
   Docker image releaser orb based on circleci/docker
 
 orbs:
-  aws: circleci/aws-cli@1.0.0
+  aws: circleci/aws-cli@2.1.0
   circleci-docker: circleci/docker@1.0.1
 
 examples:
@@ -128,7 +128,7 @@ commands:
     description: Setup aws-cli
     steps:
       - aws/setup:
-          skip-install-check: true
+          override-installed: true
 
   login:
     description: Docker login
